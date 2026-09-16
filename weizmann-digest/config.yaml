@@ -1,0 +1,55 @@
+# ---------------------------------------------------------------------------
+# Weizmann publications digest - settings
+# Everything you are likely to want to change lives in this file.
+# ---------------------------------------------------------------------------
+
+# Weizmann Institute of Science in the ROR registry.
+# Verify once at https://ror.org/search?query=Weizmann and fix if it differs.
+institution_ror: "0316ej306"
+
+# Sent to OpenAlex so they can contact us about our usage. This puts us in
+# their faster "polite pool". Not published anywhere.
+contact_email: "yair.harel@weizmann.ac.il"
+
+# How far back each run looks, in days. 7 = one week. A little overlap is
+# harmless: anything already sent is filtered out by state/seen_works.json.
+lookback_days: 9
+
+# Records newer than this to OpenAlex but published long ago are backfill,
+# not news. Drop anything whose publication year is older than this many
+# years. Set to 0 to disable the check.
+max_publication_age_years: 2
+
+# Claude writes one paragraph about every paper below, from its abstract.
+# A safety cap, so an unusual week cannot run up a surprising bill. Above this
+# many papers, only the most recent are summarised. A normal week is 40-90
+# papers and costs roughly a dollar.
+max_summaries: 150
+
+# How many papers are summarised at the same time. Raise for speed, lower if
+# you start seeing rate-limit warnings in the run log.
+summary_concurrency: 6
+
+# How many papers Claude features at the top of the issue.
+highlight_count: 5
+
+# Include arXiv / bioRxiv / medRxiv preprints alongside journal articles.
+include_preprints: true
+
+# OpenAlex work types to drop entirely. "paratext" is front matter, tables of
+# contents, mastheads - never interesting.
+exclude_types:
+  - paratext
+
+# If a roster row has no OpenAlex author ID, fall back to matching the
+# person's name against Weizmann-affiliated authors on the paper. Less
+# precise. Run `resolve-roster` and fill in the IDs to stop relying on this.
+allow_name_fallback: true
+
+# ---------------------------------------------------------------------------
+# Email
+# ---------------------------------------------------------------------------
+recipients:
+  - bina-members@weizmann.ac.il
+
+subject_prefix: "Weizmann publications"

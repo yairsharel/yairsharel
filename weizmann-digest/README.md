@@ -45,14 +45,13 @@ OpenAlex  ──►  match against    ──►  Claude writes a       ──►
 | `active` | `no` retires someone without deleting their row |
 | `notes` | Anything you like; ignored by the code |
 
-Paste your list in with `openalex_author_id` blank, then run this once to fill
-in the IDs:
+Paste your list in with `openalex_author_id` blank and commit it. Then go to
+**Actions → Find OpenAlex IDs for the roster → Run workflow**. It looks
+everyone up and, when it finishes, offers `roster_resolved.csv` for download
+under the run's artifacts. (On your own machine the same thing is
+`python -m digest.resolve_roster`.)
 
-```bash
-python -m digest.resolve_roster
-```
-
-It writes `roster_resolved.csv` with a `confidence` column. Open it in Excel,
+That file has a `confidence` column. Open it in Excel,
 sort by that column, check everything that is not `high`, then rename the file
 over `roster.csv`. Budget an hour. It is the single highest-value hour in this
 project: an author ID is exact, whereas a name match can confuse two people
@@ -176,3 +175,4 @@ Worth knowing before someone asks:
 | `digest/resolve_roster.py` | One-time: names → OpenAlex author IDs |
 | `digest/selftest.py` | Offline check on invented data |
 | `../.github/workflows/weekly-digest.yml` | The Monday schedule |
+| `../.github/workflows/resolve-roster.yml` | The roster lookup, run on demand |

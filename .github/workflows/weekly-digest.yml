@@ -1,0 +1,87 @@
+name: Weekly publications digest
+
+on:
+  schedule:
+    # Mondays at 05:00 UTC - 08:00 in Israel in summer, 07:00 in winter.
+    # GitHub runs scheduled jobs in UTC and does not follow daylight saving.
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build the issue but send no email"
+        type: boolean
+        default: true
+      since:
+        description: "Look back to this date instead (YYYY-MM-DD). Leave blank for normal."
+        type: string
+        default: ""
+
+# Needed so the job can commit the updated list of already-sent papers.
+permissions:
+  contents: write
+
+concurrency:
+  group: weekly-digest
+  cancel-in-progress: false
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: weizmann-digest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: weizmann-digest/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Check the pipeline before spending anything
+        run: python -m digest.selftest
+
+      - name: Build and send the digest
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+        run: |
+          python -m digest.run \
+            ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '--dry-run' || '' }} \
+            ${{ inputs.since && format('--since {0}', inputs.since) || '' }}
+
+      - name: Keep a copy of this issue
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ github.run_number }}
+          path: |
+            weizmann-digest/out/preview.html
+            weizmann-digest/out/preview.txt
+            weizmann-digest/out/papers.json
+          if-no-files-found: ignore
+          retention-days: 90
+
+      - name: Record which papers went out
+        # Skipped on a dry run, where run.py deliberately leaves state alone.
+        if: success()
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          if git diff --quiet -- weizmann-digest/state/seen_works.json; then
+            echo "Nothing sent, so nothing to record."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add weizmann-digest/state/seen_works.json
+          git commit -m "Record papers sent in digest run ${{ github.run_number }}"
+          git push

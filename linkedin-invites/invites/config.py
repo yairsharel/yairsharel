@@ -1,0 +1,82 @@
+"""Loads config.yaml and checks it says something usable."""
+
+from dataclasses import dataclass
+from pathlib import Path
+
+import yaml
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+@dataclass
+class Admin:
+    name: str
+    export: str
+    credits: int
+
+    @property
+    def export_path(self) -> Path:
+        return ROOT / "connections" / self.export
+
+
+@dataclass
+class Config:
+    page_name: str
+    audience: str
+    admins: list[Admin]
+    target: int
+    per_day: int
+    min_score: int
+    model: str
+    effort: str
+    batch_size: int
+
+    @property
+    def total_credits(self) -> int:
+        return sum(a.credits for a in self.admins)
+
+
+def load(path: Path | None = None) -> Config:
+    path = path or ROOT / "config.yaml"
+    raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+
+    page = raw.get("page") or {}
+    queue = raw.get("queue") or {}
+    scoring = raw.get("scoring") or {}
+
+    admins = [
+        Admin(
+            name=a["name"],
+            export=a["export"],
+            credits=int(a["credits"]),
+        )
+        for a in raw.get("admins") or []
+    ]
+    if not admins:
+        raise ValueError("config.yaml lists no admins, so there is nobody to send invites")
+
+    audience = (page.get("audience") or "").strip()
+    if not audience:
+        raise ValueError(
+            "page.audience is empty. It is the brief every connection gets scored "
+            "against -- without it the ranking is meaningless"
+        )
+
+    cfg = Config(
+        page_name=page.get("name") or "our page",
+        audience=audience,
+        admins=admins,
+        target=int(queue.get("target", 250)),
+        per_day=int(queue.get("per_day", 25)),
+        min_score=int(queue.get("min_score", 55)),
+        model=scoring.get("model", "claude-opus-5"),
+        effort=scoring.get("effort", "low"),
+        batch_size=int(scoring.get("batch_size", 40)),
+    )
+
+    if cfg.target > cfg.total_credits:
+        raise ValueError(
+            f"queue.target is {cfg.target} but the admins hold {cfg.total_credits} "
+            f"credits between them"
+        )
+    return cfg

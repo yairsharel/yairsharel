@@ -1,0 +1,4 @@
+# The LinkedIn exports hold names, employers, job titles and sometimes email
+# addresses for several hundred real people. None of it belongs in git.
+*
+!.gitignore

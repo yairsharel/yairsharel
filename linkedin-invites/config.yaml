@@ -1,0 +1,72 @@
+# Every setting for the invite queue lives here.
+
+page:
+  name: "Bina"
+
+  # What the page is about, in your own words. This is the single most
+  # important setting in the file: it is the brief Claude scores every
+  # connection against. Be concrete about who you want following you.
+  #
+  # The LinkedIn export only gives us each person's COMPANY and JOB TITLE --
+  # no field of research, no location, no interests. So write the brief in
+  # terms that can actually be judged from those two fields.
+  audience: |
+    We want followers who would care about computational and data science
+    research coming out of a Weizmann Institute group.
+
+    Strong fit:
+      - Academic researchers: PI, professor, group leader, lecturer,
+        postdoc, PhD student, research fellow -- at universities,
+        institutes, hospitals or national labs.
+      - Industry research and data roles: research scientist, data
+        scientist, ML engineer, bioinformatician, computational biologist.
+      - Science-adjacent professionals: science journalists, programme
+        officers at funding bodies, journal editors, tech transfer.
+      - Anyone at Weizmann, or at a peer institute we collaborate with.
+
+    Weak fit:
+      - Recruiters, sales, generic business development.
+      - Roles with no plausible research or data connection.
+      - Students on unrelated non-science tracks.
+
+# One block per page admin who will send invites.
+#
+# `credits` is the balance from that admin's "Invite connections" panel on
+# the page -- not a guess. Read it on the day you run this: the pool refreshes
+# monthly, and an invite that gets accepted hands the credit back.
+#
+# `export` is their connections CSV, dropped in connections/ as downloaded.
+# Do not open and re-save it first; the loader handles LinkedIn's format.
+admins:
+  - name: "Bina"
+    export: "bina-connections.csv"
+    credits: 300
+
+  - name: "Colleague"
+    export: "colleague-connections.csv"
+    credits: 250
+
+queue:
+  # How many invites you actually intend to send this round. Leave it at or
+  # below the sum of the credits above.
+  target: 250
+
+  # Invites per day, per admin. Pacing buys you an early read on the
+  # acceptance rate while most of the budget is still unspent.
+  per_day: 25
+
+  # Scores run 0-100. Anyone below this never reaches the queue, even if it
+  # means falling short of `target` -- a thin queue is information, not a
+  # failure. Raise it if the first batch converts badly.
+  min_score: 55
+
+scoring:
+  model: "claude-opus-5"
+
+  # Relevance scoring is a simple classification job, so it does not need
+  # much thinking. See the README for what the two realistic choices cost.
+  effort: "low"
+
+  # Connections per request. Smaller batches cost slightly more and fail
+  # in smaller pieces.
+  batch_size: 40

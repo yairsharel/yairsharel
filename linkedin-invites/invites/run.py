@@ -6,7 +6,7 @@ from pathlib import Path
 
 from . import assign as assign_mod
 from . import config as config_mod
-from . import load, queue, rules, score
+from . import load, queue, rules, score, worksheet
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -89,14 +89,16 @@ def main() -> None:
     assigned = assign_mod.assign(people, cfg_present)
     written = queue.write(assigned, cfg_present, args.out)
     per_admin_files = queue.write_per_admin(assigned, cfg_present, args.out.parent)
+    sheets = worksheet.write(assigned, cfg_present, args.out.parent)
 
     print(f"\nwrote {written:,} invites to {args.out}")
     for admin_name, group in assigned.items():
         if group:
             days = (len(group) - 1) // cfg.per_day + 1
             where = per_admin_files.get(admin_name)
-            print(f"  {admin_name}: {len(group):,} invites over {days} days"
-                  + (f" -> {where.name}" if where else ""))
+            print(f"  {admin_name}: {len(group):,} invites in {days} batches"
+                  + (f" -> {where.name}" if where else "")
+                  + (f", {sheets[admin_name].name}" if admin_name in sheets else ""))
         else:
             print(f"  {admin_name}: nothing assigned")
 

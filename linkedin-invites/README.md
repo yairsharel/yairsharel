@@ -21,7 +21,8 @@ exports (CSV)          deduplicate         each 0-100 vs        admin within
                                                                      │
                                                                      ▼
                                                             out/invite_queue.csv
-                                                            25/day, per admin
+                                                            + a worksheet to
+                                                              click from
 ```
 
 1. Each admin's **connections export** is read. The downloaded file opens with
@@ -34,7 +35,8 @@ exports (CSV)          deduplicate         each 0-100 vs        admin within
    `config.yaml`, with a short reason.
 4. Each person is **assigned to one admin** who can actually reach them,
    inside that admin's credit balance.
-5. The queue is written with **day numbers** so the sending is paced.
+5. The queue is written in **batches**, with a plain-text worksheet per
+   admin to work through while clicking.
 
 ---
 
@@ -120,21 +122,39 @@ python -m invites.run
 
 ## Sending
 
-Open the page's admin view → **Invite connections**, and work
-`out/invite_queue.csv` in order, filling in the `status` column as you go.
-Each row says which admin sends it; the other admin cannot invite that
-person.
+Open the page's admin view → **Invite connections**. Sending is a loop:
+paste a name from `out/worksheet_<admin>.txt` into that panel's search box,
+tick the checkbox, send the batch. Record what you sent in the `status`
+column of `invite_queue_<admin>.csv` — nothing here tracks it for you, and
+that column is what makes a second run skip people you already invited.
 
-**Stop at 50 invites and check the acceptance rate.** It is the only feedback
-this process gives you, and it arrives early enough to act on. Under about
-20% means the brief is wrong: fix `page.audience`, re-run, and spend the
-remaining credits on a better list. The ranking exists so that a bad brief
-costs you fifty credits instead of all of them.
+Budget roughly **10–20 seconds per person**, so 300 invites is about an hour
+and a half of clicking. There is no CSV import and no API for this; the
+panel is the only route.
 
-Nothing in here tracks what you sent. The `status` column is yours to keep,
-and it is what makes a second run skip the people you already invited.
+### On pacing
 
----
+The batch size is not a LinkedIn rate limit. The credit pool is the only
+hard cap, and there is no documented per-day throttle on page invites.
+Batching buys exactly one thing, and it is worth having:
+
+**Send batch 1, then wait about 48 hours before the rest.** A credit comes
+back only if the invite is accepted, so a wrong audience brief burns
+credits permanently. Finding that out after 50 invites costs you ~42
+credits; finding out after 300 costs you 250. Under about 20% acceptance,
+stop and revise `page.audience` rather than pressing on.
+
+After that checkpoint, go as fast as you like. Speed actually helps:
+refunded credits re-enter the pool, so a good brief sent quickly lets you
+send more within the month. Set `per_day` to the full target if you want
+the remainder in one sitting.
+
+### If both admins are sending
+
+A worksheet row marked `[also reachable by ...]` is someone both admins
+know. They are assigned to one of you here, and only that person should
+send it — a duplicate invite spends two credits to reach one person. Work
+your own file only.
 
 ## What it costs
 
@@ -182,4 +202,6 @@ is LinkedIn Follower Ads, which this tool does not touch.
 | `invites/score.py` | Claude: a score and a reason each |
 | `invites/queue.py` | Writes the sheet |
 | `invites/run.py` | Runs the above in order |
+| `invites/rules.py` | Rule-based scorer, for when there is no API key |
+| `invites/worksheet.py` | The plain-text list you click from |
 | `invites/selftest.py` | Offline check on invented data |

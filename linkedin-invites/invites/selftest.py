@@ -236,6 +236,20 @@ def main() -> None:
         print(f"ok   queue written, {cfg.per_day}/day pacing numbered per admin")
         checks += 1
 
+        from .worksheet import write as write_worksheet
+
+        sheets = write_worksheet(assigned, cfg, tmp)
+        for admin_name, sheet in sheets.items():
+            text = sheet.read_text(encoding="utf-8")
+            boxes = text.count("[ ] ")
+            assert boxes == len(assigned[admin_name]), (
+                f"{admin_name}'s worksheet has {boxes} checkboxes for "
+                f"{len(assigned[admin_name])} invites"
+            )
+            assert "BATCH 1 of" in text
+        print(f"ok   worksheets carry one checkbox per invite, batched")
+        checks += 1
+
         shared_in_queue = [r for r in rows if r["also_reachable_by"]]
         for row in shared_in_queue:
             assert row["admin"] not in row["also_reachable_by"]

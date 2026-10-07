@@ -83,9 +83,17 @@ queue:
   # balance if followers are the goal; leave it at 250 if 250 sends was.
   target: 550
 
-  # Invites per day, per admin. Pacing buys you an early read on the
-  # acceptance rate while most of the budget is still unspent.
-  per_day: 25
+  # Invites per batch, per admin. This is NOT a LinkedIn rate limit -- the
+  # credit pool is the only hard cap, and there is no documented per-day
+  # throttle on page invites. Batching exists for exactly one reason: a
+  # credit only comes back if the invite is accepted, so a wrong audience
+  # brief burns credits permanently, and you want to find that out after
+  # batch 1 rather than after the lot.
+  #
+  # So: send batch 1, wait about 48 hours, read the acceptance rate, and
+  # then send the remainder at whatever pace suits you. Set this to the
+  # full target if you are confident and want it done in one sitting.
+  per_day: 50
 
   # Scores run 0-100. Anyone below this never reaches the queue, even if it
   # means falling short of `target` -- a thin queue is information, not a

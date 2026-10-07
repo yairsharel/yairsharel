@@ -1,6 +1,7 @@
 """Builds the invite queue. Run as: python -m invites.run"""
 
 import argparse
+from dataclasses import replace
 from pathlib import Path
 
 from . import assign as assign_mod
@@ -26,11 +27,23 @@ def main() -> None:
     print(f"{cfg.page_name}: targeting {cfg.target} invites from "
           f"{cfg.total_credits} credits across {len(cfg.admins)} admins")
 
+    # Exports arrive one at a time, so a missing one is a normal state to be
+    # in rather than an error. It is called out loudly instead, because a
+    # queue built from one admin's list is a different thing from the queue
+    # you asked for.
     per_admin = {}
+    missing = []
     for admin in cfg.admins:
+        if not admin.export_path.exists():
+            missing.append(admin)
+            print(f"  {admin.name}: export not found at connections/{admin.export}")
+            continue
         connections = load.read_export(admin.export_path, admin.name)
         per_admin[admin.name] = connections
         print(f"  {admin.name}: {len(connections):,} connections, {admin.credits} credits")
+
+    if not per_admin:
+        raise SystemExit("\nno exports found in connections/ -- nothing to rank")
 
     people, report = assign_mod.merge(per_admin)
     print(
@@ -59,8 +72,12 @@ def main() -> None:
                     f"lower min_score, but do not lower it just to fill the sheet."
                 )
 
-    assigned = assign_mod.assign(people, cfg)
-    written = queue.write(assigned, cfg, args.out)
+    # Only the admins we actually have a list for can be assigned anything.
+    present = [a for a in cfg.admins if a.name in per_admin]
+    cfg_present = replace(cfg, admins=present)
+
+    assigned = assign_mod.assign(people, cfg_present)
+    written = queue.write(assigned, cfg_present, args.out)
 
     print(f"\nwrote {written:,} invites to {args.out}")
     for admin_name, group in assigned.items():
@@ -70,7 +87,15 @@ def main() -> None:
         else:
             print(f"  {admin_name}: nothing assigned")
 
-    if written < cfg.target:
+    if missing:
+        names = ", ".join(a.name for a in missing)
+        held = sum(a.credits for a in missing)
+        print(
+            f"\nThis queue is partial: no export for {names}, so {held} credits "
+            f"are not represented. Re-run once the export lands -- the ranking "
+            f"will shift, because people you both know get assigned once."
+        )
+    elif written < cfg.target:
         print(
             f"\n{cfg.target - written} short of the target. That is a real "
             f"finding about the size of your reachable audience, not a bug."

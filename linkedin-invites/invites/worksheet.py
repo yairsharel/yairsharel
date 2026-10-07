@@ -49,8 +49,44 @@ HEADER = """\
 """
 
 
+GROUPED_NOTE = """\
+  HOW THIS LIST IS ORDERED
+  By employer, largest group first -- not by fit. If the invite panel lets
+  you filter by company, each heading below is one filter: set it, tick the
+  people listed, move to the next heading. That turns a few hundred name
+  searches into a few dozen actions.
+
+  The trade: you are no longer working in strict fit order, so the people
+  you invite first are not quite the best-ranked ones. Each name still
+  carries its fit score, and nobody below min_score is here at all. For a
+  list dominated by one employer the difference is negligible; for a long
+  tail of one-person employers it is real but small, because the employer
+  is most of what drives the score anyway.
+
+  Fit order is in the CSV, and worksheet order can be switched back by
+  re-running without --by-employer.
+
+"""
+
+
+def _shared(person: Connection, admin_name: str) -> str:
+    others = [a for a in person.reachable_by if a != admin_name]
+    return f"   [also reachable by {', '.join(others)}]" if others else ""
+
+
+def _grouped(people: list[Connection]) -> list[tuple[str, list[Connection]]]:
+    """Employer groups, biggest first, rank order preserved inside each."""
+    groups: dict[str, list[Connection]] = {}
+    for person in people:
+        groups.setdefault(person.company or "(no employer given)", []).append(person)
+    return sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0]))
+
+
 def write(
-    assigned: dict[str, list[Connection]], cfg: Config, directory: Path
+    assigned: dict[str, list[Connection]],
+    cfg: Config,
+    directory: Path,
+    by_employer: bool = False,
 ) -> dict[str, Path]:
     out = {}
     for admin_name, people in assigned.items():
@@ -74,24 +110,30 @@ def write(
             )
         ]
 
-        for i, person in enumerate(people):
-            if i % cfg.per_day == 0:
-                done = i
-                lines.append(
-                    f"\n{'=' * 68}\nBATCH {i // cfg.per_day + 1} of {batches}"
-                    f"   (invites {i + 1}-{min(i + cfg.per_day, len(people))}"
-                    f" of {len(people)})\n{'=' * 68}\n"
-                )
-            shared = (
-                f"   [also reachable by {', '.join(a for a in person.reachable_by if a != admin_name)}]"
-                if len(person.reachable_by) > 1
-                else ""
-            )
-            lines.append(f"  [ ] {person.name}{shared}")
-            detail = " / ".join(x for x in (person.position, person.company) if x)
-            lines.append(f"        {detail[:88]}   (fit {person.score})")
+        if by_employer:
+            lines.append(GROUPED_NOTE)
+            for employer, members in _grouped(people):
+                lines.append(f"\n{'-' * 68}\n{employer}   ({len(members)})\n{'-' * 68}")
+                for person in members:
+                    lines.append(f"  [ ] {person.name}{_shared(person, admin_name)}")
+                    lines.append(f"        {(person.position or '')[:80]}   (fit {person.score})")
+        else:
+            for i, person in enumerate(people):
+                if i % cfg.per_day == 0:
+                    lines.append(
+                        f"\n{'=' * 68}\nBATCH {i // cfg.per_day + 1} of {batches}"
+                        f"   (invites {i + 1}-{min(i + cfg.per_day, len(people))}"
+                        f" of {len(people)})\n{'=' * 68}\n"
+                    )
+                lines.append(f"  [ ] {person.name}{_shared(person, admin_name)}")
+                detail = " / ".join(x for x in (person.position, person.company) if x)
+                lines.append(f"        {detail[:88]}   (fit {person.score})")
 
-        path = directory / f"worksheet_{admin_name.lower().replace(' ', '-')}.txt"
+        suffix = "_by_employer" if by_employer else ""
+        path = (
+            directory
+            / f"worksheet_{admin_name.lower().replace(' ', '-')}{suffix}.txt"
+        )
         path.write_text("\n".join(lines) + "\n", encoding="utf-8")
         out[admin_name] = path
     return out

@@ -25,6 +25,13 @@ def main() -> None:
         help="score with invites/rules.py instead of Claude. Free, instant and "
         "reproducible, but it only knows the titles it was taught.",
     )
+    parser.add_argument(
+        "--by-employer",
+        action="store_true",
+        help="order the worksheet by employer instead of by fit, so each "
+        "heading maps to one filter in the invite panel. Writes an extra "
+        "file; the fit-ordered one is still produced.",
+    )
     parser.add_argument("--config", type=Path, default=ROOT / "config.yaml")
     parser.add_argument("--out", type=Path, default=ROOT / "out" / "invite_queue.csv")
     args = parser.parse_args()
@@ -117,6 +124,10 @@ def main() -> None:
     written = queue.write(assigned, cfg_present, args.out)
     per_admin_files = queue.write_per_admin(assigned, cfg_present, args.out.parent)
     sheets = worksheet.write(assigned, cfg_present, args.out.parent)
+    if args.by_employer:
+        sheets.update(
+            worksheet.write(assigned, cfg_present, args.out.parent, by_employer=True)
+        )
 
     print(f"\nwrote {written:,} invites to {args.out}")
     for admin_name, group in assigned.items():

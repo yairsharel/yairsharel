@@ -197,6 +197,14 @@ is LinkedIn Follower Ads, which this tool does not touch.
 ## What this does not do
 
 - **It does not send anything.** By design, see the top of this file.
+  Scripting the invite panel is what LinkedIn's §8.2 prohibits, and the
+  cost of being caught falls on the admin account, which is the page's
+  access. The legitimate way to cut the work is fewer searches, not
+  automated clicks: run with `--by-employer` and, if the panel offers a
+  company filter, each heading becomes one filter instead of N searches.
+  How much that helps depends entirely on the list — one of ours collapsed
+  to a single employer covering the whole budget, the other had 90% of its
+  employers appearing exactly once.
 - **It cannot discover who already follows the page.** LinkedIn's API
   returns follower *statistics* — counts by seniority, function, industry —
   never a member list, and no data export contains one. You have to paste
@@ -234,5 +242,5 @@ is LinkedIn Follower Ads, which this tool does not touch.
 | `invites/run.py` | Runs the above in order |
 | `invites/exclude.py` | Drops people who already follow the page |
 | `invites/rules.py` | Rule-based scorer, for when there is no API key |
-| `invites/worksheet.py` | The plain-text list you click from |
+| `invites/worksheet.py` | The plain-text list you click from, by fit or by employer |
 | `invites/selftest.py` | Offline check on invented data |

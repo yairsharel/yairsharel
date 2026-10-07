@@ -82,10 +82,13 @@ def assign(people: list[Connection], cfg: Config) -> dict[str, list[Connection]]
     # since a row is not a send. When target equals the credit total, which
     # is the normal case, this is just the sum of the per-admin rows.
     admin_rows = sum(a.rows(cfg.overshoot) for a in cfg.admins)
-    if cfg.total_credits:
+    unbounded = any(a.list_size == "all" for a in cfg.admins)
+    if cfg.total_credits and not unbounded:
         target_rows = int(cfg.target * admin_rows / cfg.total_credits)
         row_budget = min(admin_rows, target_rows)
     else:
+        # With an "all" admin there is no meaningful total to scale against;
+        # the per-admin caps and the supply of eligible people decide.
         row_budget = admin_rows
 
     for person in ranked:

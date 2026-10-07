@@ -8,6 +8,14 @@ import yaml
 ROOT = Path(__file__).resolve().parent.parent
 
 
+def _list_size(value) -> int | str | None:
+    if value is None or value == "":
+        return None
+    if isinstance(value, str) and value.strip().lower() == "all":
+        return "all"
+    return int(value)
+
+
 @dataclass
 class Admin:
     name: str
@@ -15,13 +23,19 @@ class Admin:
     credits: int
 
     # How many rows to put in front of this admin. Larger than `credits`
-    # because people who already follow the page cannot be invited and
-    # LinkedIn will not say who they are in advance. None means fall back
-    # to the queue-wide overshoot multiplier.
-    list_size: int | None = None
+    # because people who already follow the page cannot be invited, and
+    # LinkedIn reveals that only when you search for them. None falls back
+    # to the queue-wide overshoot multiplier; "all" means every eligible
+    # connection they have, which is the right setting when their list is
+    # the scarce thing rather than their credits.
+    list_size: int | str | None = None
 
     def rows(self, overshoot: float) -> int:
-        return self.list_size or int(self.credits * overshoot)
+        if self.list_size == "all":
+            return 10**9  # assign() runs out of eligible people first
+        if self.list_size:
+            return int(self.list_size)
+        return int(self.credits * overshoot)
 
     @property
     def export_path(self) -> Path:
@@ -64,7 +78,7 @@ def load(path: Path | None = None) -> Config:
             name=a["name"],
             export=a["export"],
             credits=int(a["credits"]),
-            list_size=int(a["list_size"]) if a.get("list_size") else None,
+            list_size=_list_size(a.get("list_size")),
         )
         for a in raw.get("admins") or []
     ]

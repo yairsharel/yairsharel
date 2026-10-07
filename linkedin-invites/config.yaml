@@ -72,14 +72,21 @@ admins:
   - name: "Bina"
     export: "bina-connections.csv"
     credits: 300
-    # Rows to work through, above the 300 credits, to absorb the people
-    # on the list who already follow the page.
-    list_size: 350
+    # Rows to work through, above the 300 credits, to absorb the people on
+    # the list who already follow the page. No credit is ever spent on
+    # someone who already follows -- LinkedIn will not let you invite them
+    # -- so a longer list costs nothing but file size, and buys tolerance
+    # for a higher already-following rate.
+    #
+    # 500 rows against 300 credits survives a rate up to 40%. "all" would
+    # give every connection scoring at or above min_score (571 here, good
+    # for 47%), which is this admin's ceiling: 824 connections in total.
+    list_size: 500
 
   - name: "Colleague"
     export: "colleague-connections.csv"
     credits: 250
-    list_size: 300
+    list_size: 500
 
 queue:
   # How many invites to SEND this round -- not how many followers you want.

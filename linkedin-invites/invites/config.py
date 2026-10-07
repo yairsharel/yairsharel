@@ -27,6 +27,8 @@ class Config:
     target: int
     per_day: int
     min_score: int
+    overshoot: float
+    exclude_file: str
     model: str
     effort: str
     batch_size: int
@@ -34,6 +36,10 @@ class Config:
     @property
     def total_credits(self) -> int:
         return sum(a.credits for a in self.admins)
+
+    @property
+    def exclude_path(self) -> Path:
+        return ROOT / "connections" / self.exclude_file
 
 
 def load(path: Path | None = None) -> Config:
@@ -69,10 +75,15 @@ def load(path: Path | None = None) -> Config:
         target=int(queue.get("target", 250)),
         per_day=int(queue.get("per_day", 25)),
         min_score=int(queue.get("min_score", 55)),
+        overshoot=float(queue.get("overshoot", 1.8)),
+        exclude_file=raw.get("exclude_file") or "already_following.txt",
         model=scoring.get("model", "claude-opus-5"),
         effort=scoring.get("effort", "low"),
         batch_size=int(scoring.get("batch_size", 40)),
     )
+
+    if cfg.overshoot < 1.0:
+        raise ValueError("queue.overshoot below 1.0 would emit fewer rows than credits")
 
     if cfg.target > cfg.total_credits:
         raise ValueError(

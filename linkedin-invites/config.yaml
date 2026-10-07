@@ -62,6 +62,12 @@ page:
 #
 # `export` is their connections CSV, dropped in connections/ as downloaded.
 # Do not open and re-save it first; the loader handles LinkedIn's format.
+# People who already follow the page, so we do not waste searches on them.
+# One per line in connections/already_following.txt -- a profile URL or a
+# full name, mixed freely. The list has to be pasted from the page's own
+# admin view: LinkedIn puts followers in no export and no API response.
+exclude_file: "already_following.txt"
+
 admins:
   - name: "Bina"
     export: "bina-connections.csv"
@@ -94,6 +100,17 @@ queue:
   # then send the remainder at whatever pace suits you. Set this to the
   # full target if you are confident and want it done in one sitting.
   per_day: 50
+
+  # How many rows to put in front of each admin, as a multiple of their
+  # credits. It is above 1.0 for one reason: people who already follow the
+  # page cannot be invited, and LinkedIn does not tell us in advance who
+  # they are, so a list of exactly 300 names will not yield 300 sent
+  # invites. Skipping a follower costs a search, not a credit.
+  #
+  # 1.8 assumes a bit under half the list already follows. After the first
+  # batch you will know the real rate -- if 20% of batch 1 was already
+  # following, set this to about 1.25 and regenerate.
+  overshoot: 1.8
 
   # Scores run 0-100. Anyone below this never reaches the queue, even if it
   # means falling short of `target` -- a thin queue is information, not a

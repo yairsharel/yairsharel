@@ -14,19 +14,37 @@ from .config import Config
 from .load import Connection
 
 HEADER = """\
-{admin} -- {total} invites to send, in {batches} batches of {per_batch}
+{admin} -- {credits} credits to spend, {total} names to work through
 
   LinkedIn page -> Admin tools -> Invite connections. Paste each name into
-  that panel's search box, tick the box, and send the batch.
+  that panel's search box, tick the box, send.
 
-  Send BATCH 1 first, then wait about 48 hours and check the acceptance
-  rate before sending the rest. An accepted invite refunds its credit; a
-  declined or ignored one does not. If batch 1 comes back under 20%, stop
-  and revise page.audience in config.yaml -- the remaining credits are
-  worth more than the time saved by pressing on.
+  WHERE TO STOP
+  Stop when you have SENT {credits} invites -- not when you reach the end of
+  this list. The list is longer than your budget on purpose: people who
+  already follow the page cannot be invited, and LinkedIn will not tell us
+  in advance who they are. Skipping one of those costs you a search, not a
+  credit. {total} names should be enough to get {credits} invites out.
 
-  Shared: a name marked [also {others}] can be invited by either of you.
-  Only one of you should. These are assigned here.
+  If you run out of names before spending {credits} credits, say so -- it
+  means the already-following rate is higher than the {overshoot:g}x this
+  list was built for, and the list needs to run deeper.
+
+  MARK WHAT HAPPENS
+  In the CSV, put "sent" or "already following" against each row. The
+  second one is the number worth having: it tells us how much deeper the
+  next list needs to run, and it is not recoverable afterwards.
+
+  BATCH 1 FIRST
+  Send batch 1, then wait about 48 hours and check the acceptance rate
+  before the rest. An accepted invite refunds its credit; a declined or
+  ignored one does not, so a wrong audience brief burns credits
+  permanently. Under about 20% acceptance, stop and revise the brief.
+
+  SHARED NAMES
+  A name marked [also {others}] can be invited by either of you. It is
+  assigned here, so only you should send it. A duplicate spends two
+  credits to reach one person.
 
 """
 
@@ -40,13 +58,18 @@ def write(
             continue
 
         others = ", ".join(a.name for a in cfg.admins if a.name != admin_name)
+        credits = next(
+            (a.credits for a in cfg.admins if a.name == admin_name), len(people)
+        )
         batches = (len(people) - 1) // cfg.per_day + 1
         lines = [
             HEADER.format(
                 admin=admin_name,
+                credits=credits,
                 total=len(people),
                 batches=batches,
                 per_batch=cfg.per_day,
+                overshoot=cfg.overshoot,
                 others=others or "the other admin",
             )
         ]

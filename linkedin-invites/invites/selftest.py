@@ -129,6 +129,8 @@ def main() -> None:
             target=4,
             per_day=2,
             min_score=55,
+            overshoot=1.0,
+            exclude_file="already_following.txt",
             model="claude-opus-5",
             effort="low",
             batch_size=40,
@@ -159,6 +161,48 @@ def main() -> None:
 
         assert all(p.score >= cfg.min_score for p in placed), "someone below min_score got in"
         print(f"ok   nobody below min_score {cfg.min_score} reached the queue")
+        checks += 1
+
+        # --- overshoot: a list deeper than the budget ---
+        from dataclasses import replace as _replace
+
+        for person in people:
+            person.score = 90  # everyone eligible, so capacity is the only cap
+
+        tight = assign(people, cfg)
+        deep = assign(people, _replace(cfg, overshoot=2.0))
+        n_tight = sum(len(g) for g in tight.values())
+        n_deep = sum(len(g) for g in deep.values())
+        assert n_tight == cfg.target, f"at overshoot 1.0 expected {cfg.target}, got {n_tight}"
+        assert n_deep > n_tight, (
+            f"overshoot 2.0 should emit more rows than 1.0, got {n_deep} vs {n_tight}"
+        )
+        for admin in cfg.admins:
+            assert len(deep[admin.name]) <= int(admin.credits * 2.0)
+        print(f"ok   overshoot deepens the list ({n_tight} -> {n_deep} rows) within capacity")
+        checks += 1
+
+        # restore the graded scores the later checks rely on
+        for i, person in enumerate(people):
+            person.score = 90 - i * 10
+
+        # --- excluding people who already follow ---
+        from .exclude import apply as apply_exclusion
+
+        excl_file = tmp / "already_following.txt"
+        target_person = people[0]
+        excl_file.write_text(
+            f"# pasted from the page's followers view\n"
+            f"{target_person.url}\n"
+            f"{people[1].name}, PhD\n"
+            f"Someone Not In The List\n",
+            encoding="utf-8",
+        )
+        kept, stats = apply_exclusion(list(people), excl_file)
+        assert stats["removed"] == 2, f"expected 2 removed, got {stats['removed']}"
+        assert stats["unmatched"] == 1, "a name matching nobody should be reported"
+        assert target_person.key not in {k.key for k in kept}
+        print("ok   exclusion list drops followers by URL and by name, flags typos")
         checks += 1
 
         # --- the prompt rows ---

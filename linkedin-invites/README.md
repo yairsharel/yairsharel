@@ -149,6 +149,24 @@ refunded credits re-enter the pool, so a good brief sent quickly lets you
 send more within the month. Set `per_day` to the full target if you want
 the remainder in one sitting.
 
+### People who already follow
+
+They cannot be invited, and nothing in the data tells us who they are in
+advance, so there are two mitigations and you want both.
+
+**Paste them in.** Page → Analytics → Followers, copy the names into
+`connections/already_following.txt`, re-run. Every name there is a search
+you do not have to waste.
+
+**The list runs deep.** `queue.overshoot` makes the worksheet longer than
+your credit balance — 1.8× by default — so you can reach your budget even
+with no exclusion list at all. Work in order and **stop when you have sent
+your credit count**, not at the end of the list.
+
+Record `already following` against those rows in the CSV. That rate is the
+one number that tells you what `overshoot` should be next month, and it is
+not recoverable once the sitting is over.
+
 ### If both admins are sending
 
 A worksheet row marked `[also reachable by ...]` is someone both admins
@@ -172,12 +190,15 @@ is LinkedIn Follower Ads, which this tool does not touch.
 ## What this does not do
 
 - **It does not send anything.** By design, see the top of this file.
-- **It cannot tell you who already follows the page.** LinkedIn's API returns
-  follower *statistics* — counts by seniority, function, industry — never a
-  member list. The admin UI shows recent followers by name, and that is the
-  only exclusion available by hand. The one mechanism that genuinely filters
-  on "does not already follow us" is audience exclusion in Campaign Manager,
-  which is the paid path.
+- **It cannot discover who already follows the page.** LinkedIn's API
+  returns follower *statistics* — counts by seniority, function, industry —
+  never a member list, and no data export contains one. You have to paste
+  the names in yourself from the page's Followers view, into
+  `connections/already_following.txt`. Until you do, the worksheet runs
+  `overshoot`× deeper than your credits so you can still reach your budget
+  by skipping followers as you hit them. The only mechanism that filters on
+  this automatically is audience exclusion in Campaign Manager, the paid
+  path.
 - **It only reaches your admins' connections.** That is the feature's
   boundary, not this tool's. Growing past it means adding admins with
   relevant connections, or paying for reach.
@@ -196,12 +217,14 @@ is LinkedIn Follower Ads, which this tool does not touch.
 | --- | --- |
 | `config.yaml` | Every setting, commented. The audience brief lives here |
 | `connections/` | The exports, as downloaded. Gitignored |
+| `connections/already_following.txt` | Followers to exclude, pasted by hand |
 | `out/invite_queue.csv` | What the admins work from. Gitignored |
 | `invites/load.py` | Reads LinkedIn's export, preamble and all |
 | `invites/assign.py` | Merges the lists, then picks who invites whom |
 | `invites/score.py` | Claude: a score and a reason each |
 | `invites/queue.py` | Writes the sheet |
 | `invites/run.py` | Runs the above in order |
+| `invites/exclude.py` | Drops people who already follow the page |
 | `invites/rules.py` | Rule-based scorer, for when there is no API key |
 | `invites/worksheet.py` | The plain-text list you click from |
 | `invites/selftest.py` | Offline check on invented data |

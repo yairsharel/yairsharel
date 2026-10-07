@@ -6,7 +6,7 @@ from pathlib import Path
 
 from . import assign as assign_mod
 from . import config as config_mod
-from . import load, queue, rules, score, worksheet
+from . import exclude, load, queue, rules, score, worksheet
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -57,6 +57,30 @@ def main() -> None:
         f"({report.shared:,} known to more than one admin, "
         f"{report.overlap_pct:.0f}% overlap)"
     )
+
+    people, excl = exclude.apply(people, cfg.exclude_path)
+    if excl["listed"]:
+        print(
+            f"\nexcluded {excl['removed']:,} people already following the page "
+            f"({excl['listed']:,} listed in connections/{cfg.exclude_file})"
+        )
+        if excl["unmatched"]:
+            print(
+                f"  {excl['unmatched']} listed names matched nobody -- check the "
+                f"spelling, e.g. {', '.join(excl['unmatched_examples'][:3])}"
+            )
+        print(f"  {len(people):,} candidates remain")
+    else:
+        where = (
+            f"connections/{cfg.exclude_file} lists nobody yet"
+            if cfg.exclude_path.exists()
+            else f"no connections/{cfg.exclude_file}"
+        )
+        print(
+            f"\n{where}, so people who already follow the page are still in the "
+            f"list. The worksheet runs {cfg.overshoot:g}x deep to absorb them; "
+            f"paste the followers in to stop wasting searches."
+        )
 
     if args.no_scoring:
         print("\nskipping scoring (--no-scoring): ordering by connection date")

@@ -72,10 +72,14 @@ admins:
   - name: "Bina"
     export: "bina-connections.csv"
     credits: 300
+    # Rows to work through, above the 300 credits, to absorb the people
+    # on the list who already follow the page.
+    list_size: 350
 
   - name: "Colleague"
     export: "colleague-connections.csv"
     credits: 250
+    list_size: 300
 
 queue:
   # How many invites to SEND this round -- not how many followers you want.

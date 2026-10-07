@@ -154,9 +154,16 @@ the remainder in one sitting.
 They cannot be invited, and nothing in the data tells us who they are in
 advance, so there are two mitigations and you want both.
 
-**Paste them in.** Page → Analytics → Followers, copy the names into
+**Paste them in.** Copy the names into
 `connections/already_following.txt`, re-run. Every name there is a search
 you do not have to waste.
+
+Note which source you use. The page's **followers XLS export** is no help:
+its six sheets are daily counts plus demographic breakdowns (location, job
+function, seniority, industry, company size) and it contains no member
+names or profile URLs at all — verified by searching every cell of a real
+one. Names, where they are available, come from the Followers view in the
+admin UI, by hand.
 
 **The list runs deep.** `queue.overshoot` makes the worksheet longer than
 your credit balance — 1.8× by default — so you can reach your budget even
@@ -195,8 +202,9 @@ is LinkedIn Follower Ads, which this tool does not touch.
   never a member list, and no data export contains one. You have to paste
   the names in yourself from the page's Followers view, into
   `connections/already_following.txt`. Until you do, the worksheet runs
-  `overshoot`× deeper than your credits so you can still reach your budget
-  by skipping followers as you hit them. The only mechanism that filters on
+  deeper than your credits — `queue.overshoot` as a multiplier, or an exact
+  `list_size` per admin — so you can still reach your budget by skipping
+  followers as you hit them. The only mechanism that filters on
   this automatically is audience exclusion in Campaign Manager, the paid
   path.
 - **It only reaches your admins' connections.** That is the feature's

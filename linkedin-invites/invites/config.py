@@ -14,6 +14,15 @@ class Admin:
     export: str
     credits: int
 
+    # How many rows to put in front of this admin. Larger than `credits`
+    # because people who already follow the page cannot be invited and
+    # LinkedIn will not say who they are in advance. None means fall back
+    # to the queue-wide overshoot multiplier.
+    list_size: int | None = None
+
+    def rows(self, overshoot: float) -> int:
+        return self.list_size or int(self.credits * overshoot)
+
     @property
     def export_path(self) -> Path:
         return ROOT / "connections" / self.export
@@ -55,6 +64,7 @@ def load(path: Path | None = None) -> Config:
             name=a["name"],
             export=a["export"],
             credits=int(a["credits"]),
+            list_size=int(a["list_size"]) if a.get("list_size") else None,
         )
         for a in raw.get("admins") or []
     ]

@@ -66,7 +66,7 @@ def assign(people: list[Connection], cfg: Config) -> dict[str, list[Connection]]
     # because some of the list will turn out to already follow the page and
     # cannot be invited at all. Those cost a search, not a credit, so the
     # list has to run deeper than the budget for the budget to be spendable.
-    remaining = {a.name: int(a.credits * cfg.overshoot) for a in cfg.admins}
+    remaining = {a.name: a.rows(cfg.overshoot) for a in cfg.admins}
     assigned: dict[str, list[Connection]] = {a.name: [] for a in cfg.admins}
     placed = 0
 
@@ -76,7 +76,17 @@ def assign(people: list[Connection], cfg: Config) -> dict[str, list[Connection]]
         reverse=True,
     )
 
-    row_budget = int(cfg.target * cfg.overshoot)
+    # Two caps, and the tighter one wins. Per admin, `rows` is how many
+    # names they can be given. Globally, `target` is how many invites are
+    # meant to go out this round -- scaled up by the same ratio as the rows,
+    # since a row is not a send. When target equals the credit total, which
+    # is the normal case, this is just the sum of the per-admin rows.
+    admin_rows = sum(a.rows(cfg.overshoot) for a in cfg.admins)
+    if cfg.total_credits:
+        target_rows = int(cfg.target * admin_rows / cfg.total_credits)
+        row_budget = min(admin_rows, target_rows)
+    else:
+        row_budget = admin_rows
 
     for person in ranked:
         if placed >= row_budget:

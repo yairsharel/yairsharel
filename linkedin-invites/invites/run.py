@@ -76,10 +76,13 @@ def main() -> None:
             if cfg.exclude_path.exists()
             else f"no connections/{cfg.exclude_file}"
         )
+        buffers = ", ".join(
+            f"{a.name} {a.rows(cfg.overshoot) - a.credits:+d}" for a in cfg.admins
+        )
         print(
             f"\n{where}, so people who already follow the page are still in the "
-            f"list. The worksheet runs {cfg.overshoot:g}x deep to absorb them; "
-            f"paste the followers in to stop wasting searches."
+            f"list and will have to be skipped as you hit them. Rows above each "
+            f"credit balance, to absorb that: {buffers}."
         )
 
     if args.no_scoring:

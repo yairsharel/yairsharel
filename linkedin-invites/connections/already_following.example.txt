@@ -1,0 +1,15 @@
+# People who already follow the page -- they cannot be invited, so leave
+# them out of the worksheet rather than spending a search on each.
+#
+# One per line. A profile URL is exact; a bare name matches anyone with
+# that name. Suffixes like ", PhD" and "(she/her)" are ignored, so paste
+# names exactly as the followers view shows them. Lines starting with #
+# are skipped.
+#
+# Where to get the list: your page -> Analytics -> Followers. Copy the
+# names out. LinkedIn puts followers in no export and no API response, so
+# this file is the only way the pipeline can know.
+#
+# Example:
+# https://www.linkedin.com/in/some-person
+# Ada Lovelace

@@ -1,4 +1,6 @@
 # The LinkedIn exports hold names, employers, job titles and sometimes email
-# addresses for several hundred real people. None of it belongs in git.
+# addresses for several hundred real people. None of it belongs in git, and
+# nor does the follower list, which is personal data just the same.
 *
 !.gitignore
+!already_following.example.txt

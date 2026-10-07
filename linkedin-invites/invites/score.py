@@ -50,8 +50,9 @@ The page is {page_name}. Here is the audience brief, written by the page owner:
 {audience}
 
 You will get a numbered list of connections. Each gives a job title and an \
-employer, and nothing else -- that is genuinely all the export contains. \
-Score each one 0-100 on fit with the brief:
+employer on its own labelled line, and nothing else -- that is genuinely all \
+the export contains. Note that a title may itself mention an organisation; \
+the employer line is the authoritative one. Score each 0-100 on fit:
 
   80-100  clearly in the audience the brief describes
   55-79   plausibly in it; the title or employer points the right way
@@ -67,11 +68,17 @@ Return one entry per connection, keeping the index you were given.\
 
 
 def _batch_prompt(batch: list[tuple[int, Connection]]) -> str:
+    """Renders one batch as labelled fields rather than a sentence.
+
+    "{title} at {company}" reads badly often enough to matter: plenty of
+    LinkedIn titles already contain "at" ("Director of Business Development
+    at Yeda, Weizmann Institute"), which leaves two employers in one line
+    and invites the model to attribute the person to the wrong one.
+    """
     lines = []
     for i, conn in batch:
-        title = conn.position or "(no title given)"
-        company = conn.company or "(no employer given)"
-        lines.append(f"{i}. {title} at {company}")
+        lines.append(f"{i}. title: {conn.position or '(none given)'}")
+        lines.append(f"   employer: {conn.company or '(none given)'}")
     return "Score these connections:\n\n" + "\n".join(lines)
 
 

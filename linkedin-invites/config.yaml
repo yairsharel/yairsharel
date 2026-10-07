@@ -11,23 +11,48 @@ page:
   # no field of research, no location, no interests. So write the brief in
   # terms that can actually be judged from those two fields.
   audience: |
-    We want followers who would care about computational and data science
-    research coming out of a Weizmann Institute group.
+    Bina bridges Weizmann Institute research and the people who put it to
+    work. We want followers on both sides of that bridge, valued equally:
+    the researchers doing the science, and the people building companies,
+    products and programmes out of it.
 
-    Strong fit:
-      - Academic researchers: PI, professor, group leader, lecturer,
-        postdoc, PhD student, research fellow -- at universities,
-        institutes, hospitals or national labs.
-      - Industry research and data roles: research scientist, data
-        scientist, ML engineer, bioinformatician, computational biologist.
-      - Science-adjacent professionals: science journalists, programme
-        officers at funding bodies, journal editors, tech transfer.
-      - Anyone at Weizmann, or at a peer institute we collaborate with.
+    Score 80-100 -- clearly in the audience:
+      - Academic researchers at any level: PI, professor, group leader,
+        lecturer, postdoc, PhD student, research fellow, staff scientist,
+        at universities, institutes, hospitals or national labs.
+      - Science and R&D leadership in industry: founder, CEO, CTO, CSO,
+        VP or Head of R&D, Head of Research, Head of Chemistry, and the
+        equivalent at biotech, pharma, medtech and deep-tech companies.
+      - Working scientists and technical staff in industry: research
+        scientist, data scientist, bioinformatician, computational
+        biologist, process or R&D engineer.
+      - Translation and innovation roles: technology transfer, innovation
+        studios, venture and incubator partners, programme officers at
+        funding bodies, journal editors, science journalists.
+      - Anyone at Weizmann, at Bina, or at a peer research institute,
+        whatever their title.
 
-    Weak fit:
-      - Recruiters, sales, generic business development.
-      - Roles with no plausible research or data connection.
-      - Students on unrelated non-science tracks.
+    Score 55-79 -- plausibly in it:
+      - Roles at a research-driven company where the science connection is
+        likely but the title does not say it: project or product managers,
+        operations and quality leads, regulatory affairs, consultants in
+        the life sciences.
+      - Senior people at companies whose field is unclear from the name.
+
+    Score 25-54 -- probably not:
+      - Leadership or professional roles with no visible research, science
+        or technology connection at all.
+
+    Score 0-24 -- clearly outside it:
+      - Recruiters and talent acquisition.
+      - Sales roles with no technical or scientific component.
+      - Rows with no title and no employer, which cannot be judged.
+
+    Calibration, because this brief is deliberately broad: across a list
+    like ours, expect roughly a quarter to a third to belong in 80-100, not
+    most of it. If nearly everyone is scoring 85, you are not discriminating
+    and the ranking stops being useful -- within the strong group, rank by
+    how directly the person's own work touches research or its translation.
 
 # One block per page admin who will send invites.
 #
@@ -47,8 +72,15 @@ admins:
     credits: 250
 
 queue:
-  # How many invites you actually intend to send this round. Leave it at or
-  # below the sum of the credits above.
+  # How many invites to SEND this round -- not how many followers you want.
+  # Those are different numbers, and the gap is large: at a one-in-three
+  # acceptance rate, 250 invites gets you about 75 new followers, not 250.
+  #
+  # Because accepted invites refund the credit, the arithmetic for followers
+  # is roughly r*C/(1-r) for acceptance rate r and C credits. Getting to 250
+  # followers means sending closer to 800 invites, which is the whole 550
+  # credits plus what comes back. Set this to the full combined credit
+  # balance if followers are the goal; leave it at 250 if 250 sends was.
   target: 250
 
   # Invites per day, per admin. Pacing buys you an early read on the

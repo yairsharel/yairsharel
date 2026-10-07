@@ -138,8 +138,8 @@ and it is what makes a second run skip the people you already invited.
 
 ## What it costs
 
-Scoring runs well under a dollar per thousand connections on
-`claude-opus-5` — roughly $0.80, and about a fifth of that on
+Scoring is cheap enough not to think about. Measured on a real 824-connection
+export: **about $0.72** on `claude-opus-5`, and roughly a fifth of that on
 `claude-haiku-4-5`, which is a one-line change in `config.yaml`. At the size
 of two people's connection lists the model choice is not a budget decision,
 so the default is the more capable one. The run prints what it actually spent.

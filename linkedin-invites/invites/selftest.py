@@ -161,6 +161,26 @@ def main() -> None:
         print(f"ok   nobody below min_score {cfg.min_score} reached the queue")
         checks += 1
 
+        # --- the prompt rows ---
+        from .score import _batch_prompt
+
+        tricky = Connection(
+            first="Tamar",
+            last="Cohen",
+            url="",
+            company="YEDA - Technology Transfer Company",
+            position="Director of Business Development at Yeda, Weizmann Institute",
+            connected_on="01 Jan 2024",
+        )
+        prompt = _batch_prompt([(0, tricky)])
+        assert "title: Director of Business Development at Yeda" in prompt
+        assert "employer: YEDA - Technology Transfer Company" in prompt
+        assert prompt.count("employer:") == 1, "one employer line per person"
+        blank = _batch_prompt([(0, Connection("A", "B", "", "", "", ""))])
+        assert "(none given)" in blank
+        print("ok   prompt rows label title and employer separately")
+        checks += 1
+
         # --- the output sheet ---
         out = tmp / "invite_queue.csv"
         written = write(assigned, cfg, out)

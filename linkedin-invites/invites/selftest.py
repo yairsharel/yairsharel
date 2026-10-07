@@ -181,6 +181,45 @@ def main() -> None:
         print("ok   prompt rows label title and employer separately")
         checks += 1
 
+        # --- the rule-based scorer ---
+        from .rules import score_one
+
+        def conn(position, company):
+            return Connection(first="A", last="B", url="", company=company,
+                              position=position, connected_on="")
+
+        expectations = [
+            (("Professor", "Weizmann Institute of Science"), 80, 100),
+            (("PhD Student", "Tel Aviv University"), 80, 100),
+            (("Head of Chemistry", "Plastic Back"), 80, 100),
+            (("Technical Recruiter", "HireFast"), 0, 24),
+            # A recruiter at a research institute is still a recruiter.
+            (("Talent Acquisition", "Weizmann Institute of Science"), 0, 24),
+            (("Marketing Manager", "Droxi"), 25, 54),
+            (("", ""), 0, 24),
+        ]
+        for (position, company), lo, hi in expectations:
+            got, why = score_one(conn(position, company))
+            assert lo <= got <= hi, (
+                f"{position!r} at {company!r} scored {got}, expected {lo}-{hi} ({why})"
+            )
+        print(f"ok   rule scorer puts {len(expectations)} known cases in the right band")
+        checks += 1
+
+        # --- dates from a non-English export ---
+        masked = Connection(first="A", last="B", url="", company="",
+                            position="", connected_on="05-???-26")
+        older = Connection(first="A", last="B", url="", company="",
+                           position="", connected_on="12-???-19")
+        assert masked.connected_date == date(2026, 1, 1), (
+            "a masked month should degrade to year precision, not be discarded"
+        )
+        assert masked.connected_date > older.connected_date
+        assert Connection(first="A", last="B", url="", company="", position="",
+                          connected_on="05-Oct-26").connected_date == date(2026, 10, 5)
+        print("ok   masked-month dates keep year precision and still order")
+        checks += 1
+
         # --- the output sheet ---
         out = tmp / "invite_queue.csv"
         written = write(assigned, cfg, out)

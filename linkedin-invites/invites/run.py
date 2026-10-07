@@ -6,7 +6,7 @@ from pathlib import Path
 
 from . import assign as assign_mod
 from . import config as config_mod
-from . import load, queue, score
+from . import load, queue, rules, score
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -18,6 +18,12 @@ def main() -> None:
         action="store_true",
         help="skip Claude and order by how recently you connected. Free, and "
         "enough to check the exports loaded and the assignment looks sane.",
+    )
+    parser.add_argument(
+        "--rules",
+        action="store_true",
+        help="score with invites/rules.py instead of Claude. Free, instant and "
+        "reproducible, but it only knows the titles it was taught.",
     )
     parser.add_argument("--config", type=Path, default=ROOT / "config.yaml")
     parser.add_argument("--out", type=Path, default=ROOT / "out" / "invite_queue.csv")
@@ -53,11 +59,15 @@ def main() -> None:
     )
 
     if args.no_scoring:
-        print("\nskipping Claude (--no-scoring): ordering by connection date")
+        print("\nskipping scoring (--no-scoring): ordering by connection date")
+    elif args.rules:
+        print("\nscoring by rule (--rules), not by model:")
+        rules.score_all(people)
     else:
         print(f"\nscoring against the audience brief using {cfg.model}:")
         score.score_all(people, cfg)
 
+    if not args.no_scoring:
         scored = [p for p in people if p.score is not None]
         if scored:
             above = sum(1 for p in scored if p.score >= cfg.min_score)
@@ -78,12 +88,15 @@ def main() -> None:
 
     assigned = assign_mod.assign(people, cfg_present)
     written = queue.write(assigned, cfg_present, args.out)
+    per_admin_files = queue.write_per_admin(assigned, cfg_present, args.out.parent)
 
     print(f"\nwrote {written:,} invites to {args.out}")
     for admin_name, group in assigned.items():
         if group:
             days = (len(group) - 1) // cfg.per_day + 1
-            print(f"  {admin_name}: {len(group):,} invites over {days} days")
+            where = per_admin_files.get(admin_name)
+            print(f"  {admin_name}: {len(group):,} invites over {days} days"
+                  + (f" -> {where.name}" if where else ""))
         else:
             print(f"  {admin_name}: nothing assigned")
 

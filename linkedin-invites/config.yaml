@@ -81,7 +81,7 @@ queue:
   # followers means sending closer to 800 invites, which is the whole 550
   # credits plus what comes back. Set this to the full combined credit
   # balance if followers are the goal; leave it at 250 if 250 sends was.
-  target: 250
+  target: 550
 
   # Invites per day, per admin. Pacing buys you an early read on the
   # acceptance rate while most of the budget is still unspent.

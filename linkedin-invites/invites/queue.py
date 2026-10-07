@@ -21,6 +21,24 @@ COLUMNS = [
 ]
 
 
+def _slug(name: str) -> str:
+    return "".join(c if c.isalnum() else "-" for c in name.lower()).strip("-")
+
+
+def write_per_admin(
+    assigned: dict[str, list[Connection]], cfg: Config, directory: Path
+) -> dict[str, Path]:
+    """One file per admin, since each admin works only their own rows."""
+    out = {}
+    for admin_name, people in assigned.items():
+        if not people:
+            continue
+        path = directory / f"invite_queue_{_slug(admin_name)}.csv"
+        write({admin_name: people}, cfg, path)
+        out[admin_name] = path
+    return out
+
+
 def write(assigned: dict[str, list[Connection]], cfg: Config, path: Path) -> int:
     rows = []
 

@@ -14,11 +14,15 @@ So we look for the header rather than assuming where it starts.
 """
 
 import csv
+import re
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path
 
 HEADER_MARKER = "First Name"
+
+# "05-???-26" -- a date whose month did not survive the export.
+MASKED_MONTH = re.compile(r"^(\d{1,2})[-\s]+\?+[-\s]+(\d{2,4})$")
 
 
 @dataclass
@@ -46,16 +50,39 @@ class Connection:
     def connected_date(self) -> date:
         """`connected_on` as something sortable.
 
-        LinkedIn writes it as "06 Jan 2024", which sorts correctly as a
-        string only within a single month -- "02 Feb 2024" lands before
-        "10 Jan 2024". Rows we cannot parse sort oldest, so a locale we did
-        not expect degrades to arbitrary-but-stable order rather than a
-        confidently wrong one.
+        LinkedIn writes this differently depending on the account's language,
+        and one of the shapes is partly unreadable:
+
+            04 Oct 2026     English account
+            05-???-26       non-English account -- the month never rendered
+
+        The second is not a parsing failure on our side; the month genuinely
+        is not in the file. Day and year are, so those rows resolve to
+        year precision (1 January of that year) rather than being thrown
+        away. Ordering across years survives, ordering within a year does
+        not, which is exactly as much as the file supports.
+
+        Anything we cannot read at all sorts oldest, so an unexpected locale
+        degrades to stable-but-arbitrary order instead of raising.
         """
-        try:
-            return datetime.strptime(self.connected_on.strip(), "%d %b %Y").date()
-        except (ValueError, AttributeError):
+        raw = (self.connected_on or "").strip()
+        if not raw:
             return date.min
+
+        for fmt in ("%d %b %Y", "%d %b %y", "%d-%b-%Y", "%d-%b-%y"):
+            try:
+                return datetime.strptime(raw, fmt).date()
+            except ValueError:
+                pass
+
+        masked = MASKED_MONTH.match(raw)
+        if masked:
+            year = int(masked.group(2))
+            if year < 100:
+                year += 2000
+            return date(year, 1, 1)
+
+        return date.min
 
     @property
     def key(self) -> str:

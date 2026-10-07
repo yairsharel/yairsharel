@@ -174,12 +174,43 @@ Record `already following` against those rows in the CSV. That rate is the
 one number that tells you what `overshoot` should be next month, and it is
 not recoverable once the sitting is over.
 
-### If both admins are sending
+### Adding people to the team
 
-A worksheet row marked `[also reachable by ...]` is someone both admins
-know. They are assigned to one of you here, and only that person should
-send it — a duplicate invite spends two credits to reach one person. Work
+More senders is the one change that lifts every ceiling at once, but it
+does not work the way splitting a task usually does.
+
+**A person can only invite their own 1st-degree connections.** Handing a
+colleague 100 names off someone else's worksheet achieves nothing — the
+panel will not offer them people they are not connected to. So the work
+does not split by dividing one list; it splits by each person working
+their own.
+
+What each new sender brings:
+
+- their own connection graph, so candidates nobody already on the team
+  can reach;
+- their own credit balance;
+- an hour of their own clicking, in parallel with everyone else's.
+
+To add one: make them a page admin, have them export their connections
+(Settings & Privacy → Data Privacy → Get a copy of your data →
+Connections), read their credit balance off the Invite connections panel,
+drop the CSV in `connections/`, and add a block to `admins:` in
+`config.yaml`. The merge and assignment are not specific to two people —
+anyone reachable by several admins is assigned to exactly one of them.
+
+### If several admins are sending
+
+A worksheet row marked `[also reachable by ...]` is someone more than one
+admin knows. They are assigned to one sender here, and only that person
+should send it — a duplicate spends two credits to reach one person. Work
 your own file only.
+
+Before anyone works a full list, run `--pilot 25`. It writes a short probe
+per sender that measures the two things nobody can guess — how long an
+invite actually takes, and what share of the list already follows the page
+— plus three questions about what the panel can do. Twenty-five invites is
+enough to decide whether to continue, deepen the list, or price ads.
 
 ## What it costs
 
@@ -240,6 +271,7 @@ is LinkedIn Follower Ads, which this tool does not touch.
 | `invites/score.py` | Claude: a score and a reason each |
 | `invites/queue.py` | Writes the sheet |
 | `invites/run.py` | Runs the above in order |
+| `invites/pilot.py` | A 25-invite probe, before committing to the full list |
 | `invites/exclude.py` | Drops people who already follow the page |
 | `invites/rules.py` | Rule-based scorer, for when there is no API key |
 | `invites/worksheet.py` | The plain-text list you click from, by fit or by employer |

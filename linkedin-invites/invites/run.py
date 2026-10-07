@@ -6,7 +6,7 @@ from pathlib import Path
 
 from . import assign as assign_mod
 from . import config as config_mod
-from . import exclude, load, queue, rules, score, worksheet
+from . import exclude, load, pilot, queue, rules, score, worksheet
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -31,6 +31,14 @@ def main() -> None:
         help="order the worksheet by employer instead of by fit, so each "
         "heading maps to one filter in the invite panel. Writes an extra "
         "file; the fit-ordered one is still produced.",
+    )
+    parser.add_argument(
+        "--pilot",
+        type=int,
+        metavar="N",
+        help="also write an N-invite probe per sender, to measure how long "
+        "sending takes and what share of the list already follows, before "
+        "committing anyone to the full list.",
     )
     parser.add_argument("--config", type=Path, default=ROOT / "config.yaml")
     parser.add_argument("--out", type=Path, default=ROOT / "out" / "invite_queue.csv")
@@ -124,6 +132,11 @@ def main() -> None:
     written = queue.write(assigned, cfg_present, args.out)
     per_admin_files = queue.write_per_admin(assigned, cfg_present, args.out.parent)
     sheets = worksheet.write(assigned, cfg_present, args.out.parent)
+    if args.pilot:
+        for name, path in pilot.write(
+            assigned, cfg_present, args.out.parent, size=args.pilot
+        ).items():
+            sheets.setdefault(name, path)
     if args.by_employer:
         sheets.update(
             worksheet.write(assigned, cfg_present, args.out.parent, by_employer=True)

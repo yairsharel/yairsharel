@@ -1,0 +1,482 @@
+<title>Invite Tracker</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: a single-column sample register -- sticky instrument panel over dense log rows. */
+:root {
+  --bg: #f4f6f8;
+  --surface: #ffffff;
+  --surface-2: #eceff3;
+  --fg: #141d26;
+  --muted: #5c6c7b;
+  --faint: #8c9aa7;
+  --line: #dde3e9;
+  --accent: #0e7382;
+  --accent-soft: #d8eef1;
+  --sent: #176f50;
+  --sent-soft: #d6ece2;
+  --following: #35648f;
+  --following-soft: #dbe6f1;
+  --missing: #8f5e0b;
+  --missing-soft: #f2e7d0;
+  --font-ui: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1419; --surface: #161e26; --surface-2: #1d2731;
+    --fg: #e3e9ee; --muted: #93a2b0; --faint: #6d7d8b; --line: #27333e;
+    --accent: #3fb3c2; --accent-soft: #11323a;
+    --sent: #44bf8d; --sent-soft: #123326;
+    --following: #7aa9e0; --following-soft: #15263a;
+    --missing: #d6a43f; --missing-soft: #33290f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1419; --surface: #161e26; --surface-2: #1d2731;
+  --fg: #e3e9ee; --muted: #93a2b0; --faint: #6d7d8b; --line: #27333e;
+  --accent: #3fb3c2; --accent-soft: #11323a;
+  --sent: #44bf8d; --sent-soft: #123326;
+  --following: #7aa9e0; --following-soft: #15263a;
+  --missing: #d6a43f; --missing-soft: #33290f;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-ui); line-height: 1.45; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 20; background: var(--surface); }
+.gutter { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* ---- instrument panel ---- */
+header {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 15;
+  background: var(--surface); border-bottom: 1px solid var(--line);
+}
+.panel { max-width: 920px; margin: 0 auto; padding-block: 12px 10px; }
+.toprow { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: baseline; justify-content: space-between; }
+h1 { margin: 0; font-size: 1rem; font-weight: 600; letter-spacing: -0.01em; }
+h1 small { display: block; font-weight: 400; font-size: 0.74rem; color: var(--faint); letter-spacing: 0.04em; text-transform: uppercase; margin-top: 2px; }
+.tabs { display: flex; gap: 4px; background: var(--surface-2); padding: 3px; border-radius: 7px; }
+.tab { font: 500 0.8rem var(--font-ui); color: var(--muted); background: none; border: 0; padding: 5px 11px; border-radius: 5px; cursor: pointer; }
+.tab[aria-selected="true"] { background: var(--surface); color: var(--fg); box-shadow: 0 1px 2px rgba(0,0,0,.09); }
+.tab:focus-visible, .name:focus-visible, .act:focus-visible, input:focus-visible, .ext:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; margin-top: 12px; }
+.stat { min-width: 0; }
+.num { display: block; font: 600 1.45rem/1.1 var(--font-data); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.lbl { display: block; font-size: 0.68rem; color: var(--faint); letter-spacing: 0.05em; text-transform: uppercase; margin-top: 3px; }
+#nSent .num { color: var(--sent); }
+#nFollowing .num { color: var(--following); }
+
+.track { height: 5px; border-radius: 3px; background: var(--surface-2); margin-top: 11px; overflow: hidden; display: flex; }
+.track i { display: block; height: 100%; transition: width .18s ease; }
+.track .f-sent { background: var(--sent); }
+.track .f-following { background: var(--following); }
+.track .f-missing { background: var(--missing); }
+
+.verdict { display: flex; gap: 8px; align-items: flex-start; margin-top: 10px; font-size: 0.82rem; color: var(--muted); }
+.verdict b { color: var(--fg); font-weight: 600; }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex: none; margin-top: 6px; background: var(--faint); }
+.verdict[data-level="ok"] .dot { background: var(--sent); }
+.verdict[data-level="tight"] .dot { background: var(--missing); }
+.verdict[data-level="short"] .dot { background: #c4453a; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 11px; }
+#q { flex: 1 1 200px; min-width: 0; font: 400 0.85rem var(--font-ui); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; }
+.toggle { display: inline-flex; gap: 6px; align-items: center; font-size: 0.8rem; color: var(--muted); cursor: pointer; white-space: nowrap; }
+
+/* ---- the register ---- */
+main { max-width: 920px; margin: 0 auto; padding-block: 14px 48px; }
+.sync { font: 400 0.78rem var(--font-data); color: var(--faint); padding-block: 6px; }
+.group { font: 600 0.74rem var(--font-data); letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); padding: 16px 0 6px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.group span { color: var(--faint); font-weight: 400; }
+
+.row {
+  display: grid; grid-template-columns: 1fr auto; gap: 2px 10px;
+  padding: 9px 10px; border-radius: 7px; border: 1px solid transparent;
+  border-bottom-color: var(--line);
+}
+.row[data-state="sent"] { background: var(--sent-soft); border-color: transparent; }
+.row[data-state="following"] { background: var(--following-soft); }
+.row[data-state="notfound"] { background: var(--missing-soft); }
+.row.hide { display: none; }
+
+.head { display: flex; align-items: baseline; gap: 7px; min-width: 0; flex-wrap: wrap; }
+.rank { font: 500 0.72rem var(--font-data); color: var(--faint); font-variant-numeric: tabular-nums; }
+.name {
+  font: 600 0.95rem var(--font-ui); color: var(--fg); background: none;
+  border: 0; border-bottom: 1px dashed var(--line); padding: 0 0 1px; cursor: pointer; text-align: left;
+}
+.name:hover { color: var(--accent); border-bottom-color: var(--accent); }
+.row[data-state] .name { text-decoration: line-through; text-decoration-thickness: 1px; color: var(--muted); }
+.copied { font: 500 0.68rem var(--font-data); color: var(--accent); letter-spacing: 0.04em; }
+.ext { font-size: 0.78rem; color: var(--faint); text-decoration: none; }
+.ext:hover { color: var(--accent); }
+/* Informational, not a warning: most rows carry it, so it stays quiet and
+   never borrows the colour the "not found" state uses. */
+.shared { font: 500 0.64rem var(--font-data); letter-spacing: 0.04em; color: var(--faint); border: 1px solid var(--line); padding: 0 4px; border-radius: 3px; }
+.meta { grid-column: 1; font-size: 0.8rem; color: var(--muted); min-width: 0; overflow-wrap: anywhere; }
+.fit { font: 500 0.72rem var(--font-data); color: var(--faint); font-variant-numeric: tabular-nums; }
+
+.acts { grid-row: 1 / span 2; grid-column: 2; display: flex; gap: 4px; align-items: center; align-self: center; }
+.act {
+  font: 500 0.74rem var(--font-ui); color: var(--muted); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 5px; padding: 4px 9px; cursor: pointer; white-space: nowrap;
+}
+.act:hover { border-color: var(--accent); color: var(--accent); }
+.act[aria-pressed="true"][data-s="sent"] { background: var(--sent); border-color: var(--sent); color: #fff; }
+.act[aria-pressed="true"][data-s="following"] { background: var(--following); border-color: var(--following); color: #fff; }
+.act[aria-pressed="true"][data-s="notfound"] { background: var(--missing); border-color: var(--missing); color: #fff; }
+
+.how { max-width: 920px; margin: 0 auto; padding-block: 0 8px; font-size: 0.82rem; color: var(--muted); }
+.how ol { margin: 6px 0 0; padding-left: 20px; }
+.how li { margin-bottom: 3px; }
+.how b { color: var(--fg); font-weight: 600; }
+.empty { color: var(--faint); font-size: 0.85rem; padding-block: 24px; }
+
+@media (max-width: 560px) {
+  .stats { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px 8px; }
+  .row { grid-template-columns: 1fr; }
+  .acts { grid-row: auto; grid-column: 1; margin-top: 5px; }
+  .num { font-size: 1.25rem; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<header>
+  <div class="panel gutter">
+    <div class="toprow">
+      <h1>Invite Tracker<small>Bina &middot; page follow invitations</small></h1>
+      <div class="tabs" role="tablist" id="tabs"></div>
+    </div>
+
+    <div class="stats">
+      <div class="stat" id="nSent"><span class="num">0</span><span class="lbl">sent of <i id="credits">0</i></span></div>
+      <div class="stat" id="nFollowing"><span class="num">0</span><span class="lbl">already follow</span></div>
+      <div class="stat"><span class="num" id="rate">&mdash;</span><span class="lbl">follow rate</span></div>
+      <div class="stat"><span class="num" id="left">0</span><span class="lbl">rows untouched</span></div>
+    </div>
+
+    <div class="track" aria-hidden="true">
+      <i class="f-sent" id="barSent" style="width:0"></i>
+      <i class="f-following" id="barFollowing" style="width:0"></i>
+      <i class="f-missing" id="barMissing" style="width:0"></i>
+    </div>
+
+    <p class="verdict" id="verdict"><span class="dot"></span><span id="verdictText">Mark a few rows and this will tell you whether the list is deep enough.</span></p>
+
+    <div class="controls">
+      <input id="q" type="search" placeholder="Search name, title or employer" autocomplete="off">
+      <label class="toggle"><input type="checkbox" id="hideDone"> Hide marked</label>
+      <label class="toggle"><input type="checkbox" id="byEmployer"> Group by employer</label>
+    </div>
+  </div>
+</header>
+
+<div class="how gutter">
+  <ol>
+    <li>Click a <b>name</b> to copy it, then paste into the page's Invite connections search box.</li>
+    <li>Mark <b>Sent</b>, or <b>Already follows</b> if LinkedIn will not let you invite them &mdash; that costs no credit.</li>
+    <li>Stop when <b>sent</b> reaches your credit balance. Do not work to the end of the list.</li>
+  </ol>
+</div>
+
+<main class="gutter">
+  <p class="sync" id="sync">Loading saved marks&hellip;</p>
+  <div id="rows"></div>
+</main>
+
+<script>
+const DATA = __DATA__;
+const STATES = ["sent", "following", "notfound"];
+const LABEL = { sent: "Sent", following: "Already follows", notfound: "Not found" };
+
+let current = Object.keys(DATA.lists)[0];
+let marks = {};                 // id -> state, across all lists
+let store = null;               // db namespace, or null
+
+/* ---------- persistence: db first, browser storage as the fallback ---------- */
+const LS = "invite-marks-v1";
+
+function readLocal() {
+  try { return JSON.parse(localStorage.getItem(LS) || "{}"); } catch (e) { return {}; }
+}
+function writeLocal() {
+  try { localStorage.setItem(LS, JSON.stringify(marks)); } catch (e) { /* private window */ }
+}
+
+async function connect() {
+  marks = readLocal();
+  render();
+  let db = null;
+  try { db = await (window.claude && window.claude.use ? window.claude.use("db") : null); } catch (e) { db = null; }
+  const sync = document.getElementById("sync");
+  if (!db) {
+    store = null;
+    sync.textContent = "Marks are saved in this browser only. Sign in to Claude to sync them across devices.";
+    return;
+  }
+  store = db;
+  try {
+    store.collection("marks").onSnapshot(function (docs) {
+      const next = {};
+      docs.forEach(function (d) { if (d.data && d.data.state) next[d.id] = d.data.state; });
+      marks = next;
+      writeLocal();
+      sync.hidden = true;
+      render();
+    });
+  } catch (e) {
+    sync.textContent = "Marks are saved in this browser only.";
+  }
+}
+
+async function setMark(id, state) {
+  if (state) { marks[id] = state; } else { delete marks[id]; }
+  writeLocal();
+  render();
+  if (!store) return;
+  try {
+    if (state) {
+      await store.doc("marks/" + id).set({ state: state, at: new Date().toISOString() });
+    } else {
+      await store.doc("marks/" + id).delete();
+    }
+  } catch (e) {
+    document.getElementById("sync").hidden = false;
+    document.getElementById("sync").textContent =
+      "That mark was kept in this browser but could not be saved to the shared list.";
+  }
+}
+
+/* ---------- counting ---------- */
+function tally() {
+  const rows = DATA.lists[current].rows;
+  const t = { sent: 0, following: 0, notfound: 0, untouched: 0 };
+  rows.forEach(function (r) {
+    const s = marks[r[0]];
+    if (s && t[s] !== undefined) { t[s]++; } else { t.untouched++; }
+  });
+  return t;
+}
+
+function verdictFor(t, credits, total) {
+  const decided = t.sent + t.following;
+  if (decided < 8) {
+    return { level: "", html: "Mark a few rows and this will tell you whether the list is deep enough." };
+  }
+  const rate = t.following / decided;
+  const projected = t.sent + Math.floor(t.untouched * (1 - rate));
+  const pct = Math.round(rate * 100);
+  if (t.sent >= credits) {
+    return { level: "ok", html: "<b>Budget spent.</b> " + t.sent + " invites sent. Stop here &mdash; further rows would need credits you do not have." };
+  }
+  if (projected >= credits) {
+    return { level: "ok", html: "<b>On track.</b> At " + pct + "% already following, the remaining " + t.untouched +
+      " rows should yield about " + (projected - t.sent) + " more sends, reaching " + projected + " of " + credits + "." };
+  }
+  const shortfall = credits - projected;
+  return {
+    level: projected >= credits * 0.85 ? "tight" : "short",
+    html: "<b>" + pct + "% already follow.</b> At that rate these " + total + " rows reach about " +
+      projected + " sends, " + shortfall + " short of " + credits +
+      ". Ask for a deeper list, or add another sender."
+  };
+}
+
+/* ---------- rendering ---------- */
+function rowNode(r, rank) {
+  const id = r[0], name = r[1], title = r[2], company = r[3], fit = r[4], shared = r[5];
+  const el = document.createElement("div");
+  el.className = "row";
+  el.dataset.id = id;
+  const state = marks[id];
+  if (state) el.dataset.state = state;
+
+  const head = document.createElement("div");
+  head.className = "head";
+
+  const rk = document.createElement("span");
+  rk.className = "rank";
+  rk.textContent = rank;
+  head.appendChild(rk);
+
+  const btn = document.createElement("button");
+  btn.className = "name";
+  btn.type = "button";
+  btn.textContent = name;
+  btn.title = "Copy this name";
+  btn.addEventListener("click", function () { copyName(btn, name); });
+  head.appendChild(btn);
+
+  if (id) {
+    const a = document.createElement("a");
+    a.className = "ext";
+    a.href = "https://www.linkedin.com/in/" + id;
+    a.target = "_blank";
+    a.rel = "noopener";
+    a.textContent = "↗";
+    a.title = "Open profile";
+    head.appendChild(a);
+  }
+  if (shared) {
+    const s = document.createElement("span");
+    s.className = "shared";
+    s.textContent = "also " + shared.toLowerCase();
+    s.title = "Reachable by another sender too — assigned here, so only you should send it";
+    head.appendChild(s);
+  }
+  const f = document.createElement("span");
+  f.className = "fit";
+  f.textContent = "fit " + fit;
+  head.appendChild(f);
+  el.appendChild(head);
+
+  const meta = document.createElement("div");
+  meta.className = "meta";
+  meta.textContent = [title, company].filter(Boolean).join(" · ");
+  el.appendChild(meta);
+
+  const acts = document.createElement("div");
+  acts.className = "acts";
+  STATES.forEach(function (s) {
+    const b = document.createElement("button");
+    b.className = "act";
+    b.type = "button";
+    b.dataset.s = s;
+    b.textContent = LABEL[s];
+    b.setAttribute("aria-pressed", state === s ? "true" : "false");
+    b.addEventListener("click", function () { setMark(id, state === s ? null : s); });
+    acts.appendChild(b);
+  });
+  el.appendChild(acts);
+  return el;
+}
+
+function copyName(btn, name) {
+  function flash() {
+    if (btn.nextSibling && btn.nextSibling.className === "copied") return;
+    const tag = document.createElement("span");
+    tag.className = "copied";
+    tag.textContent = "copied";
+    btn.after(tag);
+    setTimeout(function () { tag.remove(); }, 1100);
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(name).then(flash, function () { selectText(btn); });
+  } else {
+    selectText(btn);
+  }
+}
+function selectText(el) {
+  const r = document.createRange();
+  r.selectNodeContents(el);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(r);
+}
+
+function render() {
+  const list = DATA.lists[current];
+  const q = document.getElementById("q").value.trim().toLowerCase();
+  const hideDone = document.getElementById("hideDone").checked;
+  const grouped = document.getElementById("byEmployer").checked;
+
+  const t = tally();
+  const total = list.rows.length;
+  document.getElementById("credits").textContent = list.credits;
+  document.querySelector("#nSent .num").textContent = t.sent;
+  document.querySelector("#nFollowing .num").textContent = t.following;
+  document.getElementById("left").textContent = t.untouched;
+  const decided = t.sent + t.following;
+  document.getElementById("rate").textContent = decided ? Math.round(100 * t.following / decided) + "%" : "—";
+  document.getElementById("barSent").style.width = (100 * t.sent / total) + "%";
+  document.getElementById("barFollowing").style.width = (100 * t.following / total) + "%";
+  document.getElementById("barMissing").style.width = (100 * t.notfound / total) + "%";
+
+  const v = verdictFor(t, list.credits, total);
+  const vEl = document.getElementById("verdict");
+  vEl.dataset.level = v.level;
+  document.getElementById("verdictText").innerHTML = v.html;
+
+  const visible = list.rows.filter(function (r) {
+    if (hideDone && marks[r[0]]) return false;
+    if (!q) return true;
+    return (r[1] + " " + r[2] + " " + r[3]).toLowerCase().indexOf(q) !== -1;
+  });
+
+  const host = document.getElementById("rows");
+  host.textContent = "";
+  if (!visible.length) {
+    const p = document.createElement("p");
+    p.className = "empty";
+    p.textContent = q ? "Nobody on this list matches that search." : "Every row on this list is marked.";
+    host.appendChild(p);
+    return;
+  }
+
+  const rankOf = new Map();
+  list.rows.forEach(function (r, i) { rankOf.set(r[0], i + 1); });
+
+  if (grouped) {
+    const groups = new Map();
+    visible.forEach(function (r) {
+      const k = r[3] || "No employer given";
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(r);
+    });
+    Array.from(groups.entries())
+      .sort(function (a, b) { return b[1].length - a[1].length || a[0].localeCompare(b[0]); })
+      .forEach(function (entry) {
+        const h = document.createElement("div");
+        h.className = "group";
+        h.innerHTML = "";
+        h.appendChild(document.createTextNode(entry[0] + " "));
+        const c = document.createElement("span");
+        c.textContent = "(" + entry[1].length + ")";
+        h.appendChild(c);
+        host.appendChild(h);
+        entry[1].forEach(function (r) { host.appendChild(rowNode(r, rankOf.get(r[0]))); });
+      });
+  } else {
+    visible.forEach(function (r) { host.appendChild(rowNode(r, rankOf.get(r[0]))); });
+  }
+}
+
+/* ---------- wiring ---------- */
+(function init() {
+  const tabs = document.getElementById("tabs");
+  Object.keys(DATA.lists).forEach(function (key) {
+    const b = document.createElement("button");
+    b.className = "tab";
+    b.type = "button";
+    b.setAttribute("role", "tab");
+    b.setAttribute("aria-selected", key === current ? "true" : "false");
+    b.textContent = DATA.lists[key].name;
+    b.addEventListener("click", function () {
+      current = key;
+      Array.prototype.forEach.call(tabs.children, function (c) {
+        c.setAttribute("aria-selected", c === b ? "true" : "false");
+      });
+      try { localStorage.setItem(LS + ":tab", key); } catch (e) {}
+      render();
+    });
+    tabs.appendChild(b);
+  });
+  try {
+    const saved = localStorage.getItem(LS + ":tab");
+    if (saved && DATA.lists[saved]) {
+      current = saved;
+      Array.prototype.forEach.call(tabs.children, function (c) {
+        c.setAttribute("aria-selected", DATA.lists[current].name === c.textContent ? "true" : "false");
+      });
+    }
+  } catch (e) {}
+
+  ["q", "hideDone", "byEmployer"].forEach(function (id) {
+    document.getElementById(id).addEventListener("input", render);
+  });
+  connect();
+})();
+</script>

@@ -6,7 +6,7 @@ from pathlib import Path
 
 from . import assign as assign_mod
 from . import config as config_mod
-from . import exclude, load, pilot, queue, rules, score, worksheet
+from . import exclude, load, pilot, queue, rules, score, tracker, worksheet
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -132,6 +132,10 @@ def main() -> None:
     written = queue.write(assigned, cfg_present, args.out)
     per_admin_files = queue.write_per_admin(assigned, cfg_present, args.out.parent)
     sheets = worksheet.write(assigned, cfg_present, args.out.parent)
+    tracker_path = tracker.write(
+        assigned, cfg_present, args.out.parent / "tracker.html"
+    )
+
     if args.pilot:
         for name, path in pilot.write(
             assigned, cfg_present, args.out.parent, size=args.pilot
@@ -143,6 +147,7 @@ def main() -> None:
         )
 
     print(f"\nwrote {written:,} invites to {args.out}")
+    print(f"  tracker page: {tracker_path}")
     for admin_name, group in assigned.items():
         if group:
             days = (len(group) - 1) // cfg.per_day + 1

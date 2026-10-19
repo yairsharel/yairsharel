@@ -202,8 +202,17 @@ const LS = "invite-marks-v1";
 function readLocal() {
   try { return JSON.parse(localStorage.getItem(LS) || "{}"); } catch (e) { return {}; }
 }
-function writeLocal() {
-  try { localStorage.setItem(LS, JSON.stringify(marks)); } catch (e) { /* private window */ }
+function writeLocal(confirmedEmpty) {
+  // Never let an empty set overwrite a non-empty one unless the store said so
+  // definitively. A partial or mis-read delivery must not be able to erase
+  // somebody's afternoon of work.
+  try {
+    if (!Object.keys(marks).length && !confirmedEmpty) {
+      const existing = localStorage.getItem(LS);
+      if (existing && existing !== "{}") return;
+    }
+    localStorage.setItem(LS, JSON.stringify(marks));
+  } catch (e) { /* private window */ }
 }
 
 async function connect() {
@@ -219,13 +228,35 @@ async function connect() {
   }
   store = db;
   try {
-    store.collection("marks").onSnapshot(function (docs) {
-      const next = {};
-      docs.forEach(function (d) { if (d.data && d.data.state) next[d.id] = d.data.state; });
-      marks = next;
-      writeLocal();
-      sync.hidden = true;
-      render();
+    // A collection's onSnapshot delivers a QuerySnapshot -- the documents are
+    // on .docs, and each one's body comes from calling .data(), which is a
+    // method and not a property. Reading it the other way yields nothing,
+    // which looks exactly like "no marks" instead of like a bug.
+    store.collection("marks").onSnapshot(function (snap) {
+      try {
+        const next = {};
+        const docs = (snap && snap.docs) || [];
+        docs.forEach(function (d) {
+          const body = typeof d.data === "function" ? d.data() : d.data;
+          if (body && body.state) next[d.id] = body.state;
+        });
+        const partial = !!(snap && snap.metadata && snap.metadata.fromCache);
+        // Early deliveries can be partial, so merge; only a server-definitive
+        // snapshot is allowed to drop marks it does not contain.
+        marks = partial ? Object.assign({}, marks, next) : next;
+        writeLocal(!partial);
+        sync.hidden = true;
+        render();
+      } catch (e) {
+        sync.hidden = false;
+        sync.textContent = "Saved marks could not be read (" + e.message +
+          "). They are safe in the shared store -- do not re-mark these rows.";
+      }
+    }, function (err) {
+      sync.hidden = false;
+      sync.textContent = err && err.code === "not_granted"
+        ? "Marks are saved in this browser only."
+        : "Live sync stopped (" + (err && err.code) + "). Marks already saved are safe; reload to resume.";
     });
   } catch (e) {
     sync.textContent = "Marks are saved in this browser only.";

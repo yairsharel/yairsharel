@@ -89,6 +89,7 @@ h1 small { display: block; font-weight: 400; font-size: 0.74rem; color: var(--fa
 /* ---- the register ---- */
 main { max-width: 920px; margin: 0 auto; padding-block: 14px 48px; }
 .sync { font: 400 0.78rem var(--font-data); color: var(--faint); padding-block: 6px; }
+.sync[data-bad="1"] { color: var(--missing); font-weight: 500; }
 .group { font: 600 0.74rem var(--font-data); letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); padding: 16px 0 6px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
 .group span { color: var(--faint); font-weight: 400; }
 
@@ -215,51 +216,77 @@ function writeLocal(confirmedEmpty) {
   } catch (e) { /* private window */ }
 }
 
+const BUILD = 3;   // shown on the page, so we can tell which version a tab is running
+
+function applyDocs(snap, definitive) {
+  const next = {};
+  const docs = (snap && snap.docs) || [];
+  docs.forEach(function (d) {
+    const body = typeof d.data === "function" ? d.data() : d.data;
+    if (body && body.state) next[d.id] = body.state;
+  });
+  // Early deliveries can be partial, so merge; only a server-definitive
+  // snapshot may drop marks it does not contain.
+  marks = definitive ? next : Object.assign({}, marks, next);
+  writeLocal(definitive);
+  render();
+  return docs.length;
+}
+
+function status(text, bad) {
+  const el = document.getElementById("sync");
+  el.hidden = false;
+  el.textContent = "build " + BUILD + " \u00b7 " + text;
+  el.dataset.bad = bad ? "1" : "";
+}
+
 async function connect() {
   marks = readLocal();
+  const localCount = Object.keys(marks).length;
   render();
+
   let db = null;
-  try { db = await (window.claude && window.claude.use ? window.claude.use("db") : null); } catch (e) { db = null; }
-  const sync = document.getElementById("sync");
+  try {
+    db = await (window.claude && window.claude.use ? window.claude.use("db") : null);
+  } catch (e) {
+    db = null;
+  }
   if (!db) {
-    store = null;
-    sync.textContent = "Marks are saved in this browser only. Sign in to Claude to sync them across devices.";
+    status(localCount + " marks in this browser only \u2014 the shared list is not available here. "
+      + "Open the page while signed in to Claude to sync.", true);
     return;
   }
   store = db;
+
+  // Read once, directly. The first paint must not depend on a subscription
+  // arriving: a plain get() either returns the marks or rejects with a code
+  // worth showing, where a silent subscription just looks like "no marks".
   try {
-    // A collection's onSnapshot delivers a QuerySnapshot -- the documents are
-    // on .docs, and each one's body comes from calling .data(), which is a
-    // method and not a property. Reading it the other way yields nothing,
-    // which looks exactly like "no marks" instead of like a bug.
-    store.collection("marks").onSnapshot(function (snap) {
-      try {
-        const next = {};
-        const docs = (snap && snap.docs) || [];
-        docs.forEach(function (d) {
-          const body = typeof d.data === "function" ? d.data() : d.data;
-          if (body && body.state) next[d.id] = body.state;
-        });
+    const snap = await store.collection("marks").limit(1000).get();
+    const n = applyDocs(snap, true);
+    status(n + " marks loaded from the shared list.");
+  } catch (err) {
+    status("could not read saved marks (" + ((err && err.code) || "unknown")
+      + "). Your marks are safe in the shared list \u2014 do not re-mark these rows.", true);
+    return;
+  }
+
+  // Then subscribe, so another tab or device shows up live. A failure here
+  // costs live updates, not the marks already on screen.
+  try {
+    store.collection("marks").limit(1000).onSnapshot(
+      function (snap) {
         const partial = !!(snap && snap.metadata && snap.metadata.fromCache);
-        // Early deliveries can be partial, so merge; only a server-definitive
-        // snapshot is allowed to drop marks it does not contain.
-        marks = partial ? Object.assign({}, marks, next) : next;
-        writeLocal(!partial);
-        sync.hidden = true;
-        render();
-      } catch (e) {
-        sync.hidden = false;
-        sync.textContent = "Saved marks could not be read (" + e.message +
-          "). They are safe in the shared store -- do not re-mark these rows.";
+        const n = applyDocs(snap, !partial);
+        if (!partial) status(n + " marks loaded from the shared list.");
+      },
+      function (err) {
+        status("live updates stopped (" + ((err && err.code) || "unknown")
+          + "). Marks already saved are safe; reload to resume.", true);
       }
-    }, function (err) {
-      sync.hidden = false;
-      sync.textContent = err && err.code === "not_granted"
-        ? "Marks are saved in this browser only."
-        : "Live sync stopped (" + (err && err.code) + "). Marks already saved are safe; reload to resume.";
-    });
+    );
   } catch (e) {
-    sync.textContent = "Marks are saved in this browser only.";
+    status("loaded, but live updates are unavailable (" + e.message + ").", true);
   }
 }
 
@@ -275,9 +302,8 @@ async function setMark(id, state) {
       await store.doc("marks/" + id).delete();
     }
   } catch (e) {
-    document.getElementById("sync").hidden = false;
-    document.getElementById("sync").textContent =
-      "That mark was kept in this browser but could not be saved to the shared list.";
+    status("\u2018" + id + "\u2019 was kept in this browser but NOT saved to the shared list ("
+      + ((e && e.code) || "unknown") + ").", true);
   }
 }
 

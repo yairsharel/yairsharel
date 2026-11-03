@@ -8,6 +8,7 @@ cleared browser, follows them between devices, and can be read back to
 work out how deep the next list needs to run.
 """
 
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -18,6 +19,28 @@ from .load import Connection
 TEMPLATE = Path(__file__).resolve().parent / "tracker_template.html"
 
 SLUG = re.compile(r"linkedin\.com/in/([^/?#]+)", re.I)
+
+# What the artifact store accepts as one path segment. A LinkedIn slug can
+# contain characters outside this set -- an accent, a Hebrew name or an emoji
+# arrives percent-encoded, and "%" is not legal here. Building a document
+# reference from such a path throws synchronously, so the mark never saves and
+# the next read erases it: the row looks simply unclickable.
+LEGAL_SEGMENT = re.compile(r"^[A-Za-z0-9_\-.~:@+]{1,200}$")
+
+
+def doc_id(slug: str) -> str:
+    """A store-legal id for a slug, stable across rebuilds.
+
+    A slug that is already legal is returned untouched, so ids stay the same
+    and marks already recorded against them keep matching. Only the slugs that
+    could never have been written get rewritten, with a hash of the original
+    appended so two different slugs cannot collapse onto one id.
+    """
+    if LEGAL_SEGMENT.match(slug):
+        return slug
+    cleaned = re.sub(r"[^A-Za-z0-9_\-.~:@+]", "-", slug).strip("-") or "x"
+    digest = hashlib.sha1(slug.encode("utf-8")).hexdigest()[:8]
+    return f"{cleaned[:180]}-{digest}"
 
 
 def _slug(conn: Connection, fallback: int) -> str:
@@ -44,18 +67,25 @@ def build(assigned: dict[str, list[Connection]], cfg: Config) -> str:
         rows, seen = [], set()
         for i, person in enumerate(people):
             slug = _slug(person, i)
-            if slug in seen:          # two rows must never share a doc key
-                slug = f"{slug}-{i}"
-            seen.add(slug)
+            key = doc_id(slug)
+            if key in seen:           # two rows must never share a doc key
+                key = f"{key}-{i}"
+            seen.add(key)
             others = [a for a in person.reachable_by if a != admin_name]
             rows.append([
-                slug,
+                key,
                 person.name,
                 person.position or "",
                 person.company or "",
                 person.score if person.score is not None else "",
                 ", ".join(others),
+                # The profile slug, only when the id had to be rewritten --
+                # the link needs the real one, the store needs the legal one.
+                slug if key != slug else "",
             ])
+
+        bad = [r[0] for r in rows if not LEGAL_SEGMENT.match(r[0])]
+        assert not bad, f"ids that the store would reject: {bad[:5]}"
 
         lists[key] = {
             "name": admin_name,

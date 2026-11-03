@@ -195,6 +195,7 @@ const LABEL = { sent: "Sent", following: "Already follows", notfound: "Not found
 
 let current = Object.keys(DATA.lists)[0];
 let marks = {};                 // id -> state, across all lists
+let pending = {};               // marks whose write failed: kept on screen anyway
 let store = null;               // db namespace, or null
 
 /* ---------- persistence: db first, browser storage as the fallback ---------- */
@@ -216,7 +217,7 @@ function writeLocal(confirmedEmpty) {
   } catch (e) { /* private window */ }
 }
 
-const BUILD = 3;   // shown on the page, so we can tell which version a tab is running
+const BUILD = 4;   // shown on the page, so we can tell which version a tab is running
 
 function applyDocs(snap, definitive) {
   const next = {};
@@ -228,6 +229,10 @@ function applyDocs(snap, definitive) {
   // Early deliveries can be partial, so merge; only a server-definitive
   // snapshot may drop marks it does not contain.
   marks = definitive ? next : Object.assign({}, marks, next);
+  // A mark whose write failed is not in the store, so an authoritative read
+  // would wipe it off the screen. Keep it visible instead -- losing the click
+  // silently is what made rows look unclickable.
+  Object.assign(marks, pending);
   writeLocal(definitive);
   render();
   return docs.length;
@@ -291,7 +296,7 @@ async function connect() {
 }
 
 async function setMark(id, state) {
-  if (state) { marks[id] = state; } else { delete marks[id]; }
+  if (state) { marks[id] = state; } else { delete marks[id]; delete pending[id]; }
   writeLocal();
   render();
   if (!store) return;
@@ -302,8 +307,11 @@ async function setMark(id, state) {
       await store.doc("marks/" + id).delete();
     }
   } catch (e) {
-    status("\u2018" + id + "\u2019 was kept in this browser but NOT saved to the shared list ("
-      + ((e && e.code) || "unknown") + ").", true);
+    if (state) { pending[id] = state; } else { delete pending[id]; }
+    render();
+    status("\u2018" + id + "\u2019 shows as " + (state || "cleared")
+      + " here but could NOT be saved to the shared list ("
+      + ((e && e.code) || e.name || "unknown") + "). Tell Claude this row failed.", true);
   }
 }
 
@@ -345,6 +353,7 @@ function verdictFor(t, credits, total) {
 /* ---------- rendering ---------- */
 function rowNode(r, rank) {
   const id = r[0], name = r[1], title = r[2], company = r[3], fit = r[4], shared = r[5];
+  const slug = r[6] || id;   // the real profile slug, where the id was rewritten
   const el = document.createElement("div");
   el.className = "row";
   el.dataset.id = id;
@@ -370,7 +379,7 @@ function rowNode(r, rank) {
   if (id) {
     const a = document.createElement("a");
     a.className = "ext";
-    a.href = "https://www.linkedin.com/in/" + id;
+    a.href = "https://www.linkedin.com/in/" + slug;
     a.target = "_blank";
     a.rel = "noopener";
     a.textContent = "↗";
